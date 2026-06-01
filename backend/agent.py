@@ -1,10 +1,13 @@
+from datetime import datetime
 import os
 from dotenv import load_dotenv
 from anthropic import Anthropic
 from database import get_db
 
+import json
+
 load_dotenv()
-print("Anthropic API key loaded successfully."  if os.getenv("ANTHROPIC_API_KEY") else "Failed to load Anthropic API key.")
+
 client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 MODEL = "claude-haiku-4-5-20251001"
 
@@ -58,40 +61,6 @@ def get_context_summary() -> str:
 
     conn.close()
     return "\n\n".join(parts)
-
-
-def load_history() -> list:
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT role, content FROM messages ORDER BY created_at ASC")
-    messages = [{"role": row["role"], "content": row["content"]} for row in cursor.fetchall()]
-    conn.close()
-    return messages
-
-
-def save_message(role: str, content: str):
-    conn = get_db()
-    conn.execute("INSERT INTO messages (role, content) VALUES (?, ?)", (role, content))
-    conn.commit()
-    conn.close()
-
-
-def chat(user_message: str) -> str:
-    history = load_history()
-    messages = history + [{"role": "user", "content": user_message}]
-
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=1024,
-        system=SYSTEM_PROMPT,
-        messages=messages,
-    )
-
-    reply = response.content[0].text
-    save_message("user", user_message)
-    save_message("assistant", reply)
-    return reply
-
 
 def get_focus_suggestion() -> str:
     context = get_context_summary()

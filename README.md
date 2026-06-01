@@ -1,26 +1,31 @@
 # PM Agent
 
-An AI-powered personal project manager that helps you set goals, track progress, and stay accountable — built as a web app with a conversational interface.
+A personal project manager built around how I actually work — goals and tasks live in a local database, and I manage everything through natural language conversations in Claude Desktop via an MCP server.
 
-You give it natural language updates ("worked on the backend for an hour tonight, got the database schema done but hit a blocker with async routes"). It logs what matters, extracts tasks and blockers automatically, and tells you what to focus on next.
-
-Built with FastAPI, React, and the Claude API.
+Built with FastAPI, React, FastMCP, and SQLite.
 
 ---
 
 ## Why I built this
 
-I wanted a tool that felt less like a task tracker and more like a thinking partner — something that understands the *context* behind your goals, not just a list of checkboxes. It also happens to be a good portfolio project: it uses a real LLM API, has a clean full-stack architecture, and solves an actual problem I have.
+I wanted something that felt less like a task tracker and more like a thinking partner — something that understands the context behind my goals, not just a list of checkboxes. The architecture reflects how I already work: I plan in Claude Desktop, so instead of building a separate chat interface, I exposed the database directly to Claude via MCP.
+
+---
+
+## How it works
+
+Claude Desktop connects to a local MCP server that sits in front of the SQLite database. During a planning session, Claude can read current context (goals, tasks, blockers, recent session logs) and write back to the database directly. The React frontend is a read/display layer — it shows current state but the conversational interface lives in Claude Desktop.
 
 ---
 
 ## Features
 
-- **Dashboard + chat in one view** — see all your goals and tasks at a glance, with a chat panel alongside it
-- **Natural language updates** — just describe what you did; the agent extracts tasks, progress, and blockers automatically
-- **Persistent memory** — everything is stored in SQLite so your context survives between sessions
-- **Blocker tracking** — the agent notices when the same blocker keeps coming up and surfaces it
-- **Focus suggestions** — based on your goals and recent activity, it tells you what to work on tonight
+- **MCP server** — Claude Desktop can read and write project state directly via tools
+- **Session logs** — drop a note at the end of each session so context survives across breaks
+- **Goal and task tracking** — goals with horizons and statuses, tasks with todo/in_progress/done states
+- **Blocker tracking** — linked to a goal and optionally a specific task
+- **Dashboard** — live view of goals, tasks, and blockers via the React frontend
+- **Focus suggestion** — Claude-generated prompt on what to work on next
 
 ---
 
@@ -30,7 +35,7 @@ I wanted a tool that felt less like a task tracker and more like a thinking part
 |---|---|
 | Frontend | React (Vite) |
 | Backend | Python, FastAPI |
-| AI | Claude API (`claude-sonnet-4-20250514`) |
+| MCP server | FastMCP (stdio transport) |
 | Database | SQLite |
 | Auth | None (personal tool, local use) |
 
@@ -41,17 +46,17 @@ I wanted a tool that felt less like a task tracker and more like a thinking part
 ```
 pm-agent/
 ├── backend/
-│   ├── main.py          # FastAPI app, route definitions
-│   ├── database.py      # SQLite setup, models, queries
-│   ├── agent.py         # Claude API integration, system prompt
+│   ├── main.py           # FastAPI app, REST endpoints
+│   ├── database.py       # SQLite schema, queries, seed data
+│   ├── mcp_server.py     # FastMCP server, tool definitions
+│   ├── agent.py          # Focus suggestion (Claude API)
 │   ├── requirements.txt
-│   └── .env             # ANTHROPIC_API_KEY (not committed)
+│   └── .env              # ANTHROPIC_API_KEY (not committed)
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx          # Root component, layout
-│   │   ├── Dashboard.jsx    # Goals, tasks, blockers panel
-│   │   ├── Chat.jsx         # Conversation interface
-│   │   └── api.js           # Backend fetch helpers
+│   │   ├── App.jsx       # Root component, layout
+│   │   ├── Dashboard.jsx # Goals, tasks, blockers panel
+│   │   └── api.js        # Backend fetch helpers
 │   ├── index.html
 │   └── package.json
 ├── .gitignore
@@ -66,6 +71,7 @@ pm-agent/
 
 - Python 3.10+
 - Node.js 18+
+- Claude Desktop
 - An Anthropic API key — get one at [console.anthropic.com](https://console.anthropic.com)
 
 ### Backend
@@ -77,19 +83,34 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Create a `.env` file in the `backend/` directory:
+Create a `.env` file in `backend/`:
 
 ```
 ANTHROPIC_API_KEY=your_api_key_here
 ```
 
-Start the server:
+Start the API server:
 
 ```bash
 uvicorn main:app --reload
 ```
 
-The API will be running at `http://localhost:8000`.
+### MCP server (Claude Desktop)
+
+Add the following to `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac):
+
+```json
+{
+  "mcpServers": {
+    "pm-agent": {
+      "command": "/absolute/path/to/backend/venv/bin/python",
+      "args": ["/absolute/path/to/backend/mcp_server.py"]
+    }
+  }
+}
+```
+
+Use the absolute path to the Python binary inside your venv. Restart Claude Desktop after saving.
 
 ### Frontend
 
@@ -99,31 +120,44 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173` in your browser.
+Open `http://localhost:5173`.
 
 ---
 
-## API endpoints
+## MCP tools
+
+| Tool | Description |
+|---|---|
+| `get_context` | Current goals, tasks, blockers, and recent session logs |
+| `log_session` | Write a session note for context recovery |
+| `create_goal` | Add a new goal |
+| `update_goal` | Update title, description, horizon, or status |
+| `create_task` | Add a task under a goal |
+| `update_task` | Update title or status |
+| `log_blocker` | Log a blocker against a goal and optionally a task |
+| `update_blocker` | Update blocker description or resolve it |
+
+## REST endpoints
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/goals` | Fetch all goals and their current status |
-| `POST` | `/goals` | Create a new goal |
-| `GET` | `/tasks` | Fetch all tasks (optionally filtered by goal) |
-| `POST` | `/tasks` | Create or update a task |
-| `GET` | `/blockers` | Fetch open blockers |
-| `POST` | `/chat` | Send a message and get a response from the agent |
-| `GET` | `/chat/history` | Fetch conversation history |
+| `GET` | `/goals` | All goals with tasks and open blocker count |
+| `POST` | `/goals` | Create a goal |
+| `GET` | `/tasks` | Tasks, optionally filtered by goal |
+| `POST` | `/tasks` | Create a task |
+| `PATCH` | `/tasks/{id}` | Update task status |
+| `GET` | `/blockers` | Open blockers |
+| `PATCH` | `/blockers/{id}` | Update blocker status |
+| `GET` | `/focus` | Tonight's focus suggestion |
 
 ---
 
 ## Roadmap
 
-- [ ] MVP: goals, tasks, blockers, chat — fully working
+- [ ] Activity log panel — replace chat with a chronological feed of writes
 - [ ] Streak tracking — visualise consistency over time
-- [ ] Weekly summary — agent-generated review of the week
-- [ ] Mobile-friendly layout
-- [ ] Export to markdown — dump your progress log as a readable file
+- [ ] Weekly summary tool — agent-generated review across all goals
+- [ ] Push repo public on GitHub
 
 ---
 

@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from database import init_db, seed_goals, get_db
-from agent import chat, get_focus_suggestion
+from agent import get_focus_suggestion
 
 app = FastAPI()
 
@@ -155,31 +155,6 @@ def update_blocker(blocker_id: int, update: BlockerUpdate):
     conn.commit()
     conn.close()
     return {"id": blocker_id, "status": update.status}
-
-
-# ── Chat ───────────────────────────────────────────────────────────────────────
-
-class ChatMessage(BaseModel):
-    message: str
-
-
-@app.post("/chat")
-def send_message(msg: ChatMessage):
-    reply = chat(msg.message)
-    return {"reply": reply}
-
-
-@app.get("/chat/history")
-def chat_history():
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT * FROM messages ORDER BY created_at DESC LIMIT 50"
-    )
-    messages = [dict(row) for row in cursor.fetchall()]
-    conn.close()
-    return list(reversed(messages))
-
 
 # ── Focus ──────────────────────────────────────────────────────────────────────
 
