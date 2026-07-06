@@ -1,7 +1,8 @@
 from fastmcp import FastMCP
-from agent import get_current_context
+from agent import get_context_summary
 from database import (
     get_db,
+    get_current_context,
     log_session_entry as db_log_session_entry,
     create_goal as db_create_goal,
     create_task as db_create_task,
@@ -11,7 +12,25 @@ from database import (
     update_blocker as db_update_blocker,
 )
 
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
+
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+# AUTH_TOKEN = os.getenv("MCP_AUTH_TOKEN")
+
+# class BearerAuthMiddleware(BaseHTTPMiddleware):
+#     async def dispatch(self, request, call_next):
+#         auth = request.headers.get("Authorization", "")
+#         if auth != f"Bearer {AUTH_TOKEN}":
+#             return Response("Unauthorized", status_code=401)
+#         return await call_next(request)
+
 mcp = FastMCP("PM Agent")
+# mcp.add_middleware(BearerAuthMiddleware)
 
 @mcp.tool(
     name="get_context", 
@@ -110,4 +129,4 @@ def update_blocker(blocker_id: int, description: str = None, status: str = None)
     return db_update_blocker(blocker_id, description=description, status=status)
 
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run(transport="streamable-http", host="127.0.0.1", port=8001)
