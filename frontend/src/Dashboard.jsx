@@ -1,11 +1,19 @@
+import { useState } from 'react'
+import NewGoalModal from './NewGoalModal'
+
 const STATUS_LABEL = { active: 'Active', completed: 'Completed', paused: 'Paused' }
 
-export default function Dashboard({ goals, blockers, loading, selectedGoalId, onSelect }) {
+export default function Dashboard({ goals, blockers, loading, selectedGoalId, onSelect, addGoal }) {
+  const [showNewGoal, setShowNewGoal] = useState(false)
+
   if (loading) return <div className="loading">Loading...</div>
 
   return (
     <div className="dashboard">
-      <h2 className="panel-title">Goals</h2>
+      <div className="panel-header">
+        <h2 className="panel-title">Goals</h2>
+        <button className="btn-add" onClick={() => setShowNewGoal(true)}>+ New Goal</button>
+      </div>
       <div className="goals-list">
         {goals.map(goal => {
           const total = goal.tasks.length
@@ -39,6 +47,9 @@ export default function Dashboard({ goals, blockers, loading, selectedGoalId, on
           )
         })}
       </div>
+      {showNewGoal && (
+        <NewGoalModal onClose={() => setShowNewGoal(false)} onCreate={addGoal} />
+      )}
     </div>
   )
 }

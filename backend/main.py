@@ -73,8 +73,12 @@ def create_goal(goal: GoalCreate):
     )
     conn.commit()
     goal_id = cursor.lastrowid
+    cursor.execute("SELECT * FROM goals WHERE id = ?", (goal_id,))
+    new_goal = dict(cursor.fetchone())
+    new_goal["tasks"] = []
+    new_goal["open_blocker_count"] = 0
     conn.close()
-    return {"id": goal_id, **goal.dict()}
+    return new_goal
 
 
 # ── Tasks ──────────────────────────────────────────────────────────────────────
@@ -146,6 +150,28 @@ def list_blockers():
     blockers = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return blockers
+
+
+class BlockerCreate(BaseModel):
+    goal_id: int
+    description: str
+    task_id: Optional[int] = None
+
+
+@app.post("/blockers")
+def create_blocker(blocker: BlockerCreate):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO blockers (goal_id, task_id, description) VALUES (?, ?, ?)",
+        (blocker.goal_id, blocker.task_id, blocker.description),
+    )
+    conn.commit()
+    blocker_id = cursor.lastrowid
+    cursor.execute("SELECT * FROM blockers WHERE id = ?", (blocker_id,))
+    new_blocker = dict(cursor.fetchone())
+    conn.close()
+    return new_blocker
 
 
 class BlockerUpdate(BaseModel):

@@ -15,6 +15,7 @@ export const getTasks = (goalId) => req(`/tasks${goalId ? `?goal_id=${goalId}` :
 export const createTask = (data) => req('/tasks', { method: 'POST', body: JSON.stringify(data) })
 export const updateTask = (id, status) => req(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) })
 export const getBlockers = () => req('/blockers')
+export const createBlocker = (data) => req('/blockers', { method: 'POST', body: JSON.stringify(data) })
 export const updateBlocker = (id, status) => req(`/blockers/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) })
 export const getSessions = () => req('/sessions')
 export const createSession = (content) => req('/sessions', { method: 'POST', body: JSON.stringify({ content }) })

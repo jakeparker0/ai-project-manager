@@ -76,6 +76,27 @@ def test_blockers_list_is_empty_initially(client):
     assert resp.json() == []
 
 
+def test_create_blocker(client):
+    goal_id = client.get("/goals").json()[0]["id"]
+    resp = client.post("/blockers", json={"goal_id": goal_id, "description": "Waiting on access"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["description"] == "Waiting on access"
+    assert body["status"] == "open"
+    assert body["task_id"] is None
+
+    blockers = client.get("/blockers").json()
+    assert any(b["description"] == "Waiting on access" for b in blockers)
+
+
+def test_create_blocker_with_task_id(client):
+    goal_id = client.get("/goals").json()[0]["id"]
+    task = client.post("/tasks", json={"goal_id": goal_id, "title": "Update CV"}).json()
+    resp = client.post("/blockers", json={"goal_id": goal_id, "description": "Blocked", "task_id": task["id"]})
+    assert resp.status_code == 200
+    assert resp.json()["task_id"] == task["id"]
+
+
 def test_resolve_nonexistent_blocker_returns_404(client):
     resp = client.patch("/blockers/99999", json={"status": "resolved"})
     assert resp.status_code == 404

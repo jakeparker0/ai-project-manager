@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getGoals, getBlockers, updateTask, updateBlocker, createTask } from './api'
+import { getGoals, getBlockers, updateTask, updateBlocker, createTask, createGoal, createBlocker } from './api'
 
 const TASK_NEXT = { todo: 'in_progress', in_progress: 'done', done: 'todo' }
 
@@ -45,5 +45,17 @@ export default function useGoalsData(refreshKey) {
     setBlockers(prev => prev.filter(b => b.id !== blockerId))
   }, [])
 
-  return { goals, blockers, loading, toggleTask, addTask, resolveBlocker }
+  const addGoal = useCallback(async (data) => {
+    const goal = await createGoal(data)
+    setGoals(prev => [...prev, goal])
+    return goal
+  }, [])
+
+  const addBlocker = useCallback(async (data) => {
+    const blocker = await createBlocker(data)
+    setBlockers(prev => [blocker, ...prev])
+    return blocker
+  }, [])
+
+  return { goals, blockers, loading, toggleTask, addTask, resolveBlocker, addGoal, addBlocker }
 }

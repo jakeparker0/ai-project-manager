@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import NewBlockerModal from './NewBlockerModal'
 
 const TASK_NEXT = { todo: 'in_progress', in_progress: 'done', done: 'todo' }
 const TASK_LABEL = { todo: 'To do', in_progress: 'In progress', done: 'Done' }
 
-export default function GoalDetail({ goal, blockers, toggleTask, addTask, resolveBlocker }) {
+export default function GoalDetail({ goal, blockers, toggleTask, addTask, resolveBlocker, addBlocker }) {
   const [newTask, setNewTask] = useState('')
+  const [showNewBlocker, setShowNewBlocker] = useState(false)
 
   if (!goal) {
     return (
@@ -54,9 +56,12 @@ export default function GoalDetail({ goal, blockers, toggleTask, addTask, resolv
         />
       </div>
 
-      {blockers.length > 0 && (
-        <div className="blockers-section">
+      <div className="blockers-section">
+        <div className="panel-header">
           <h3 className="panel-title">Blockers</h3>
+          <button className="btn-add" onClick={() => setShowNewBlocker(true)}>+ New Blocker</button>
+        </div>
+        {blockers.length > 0 ? (
           <div className="blockers-list">
             {blockers.map(b => (
               <div key={b.id} className="blocker-item">
@@ -67,7 +72,18 @@ export default function GoalDetail({ goal, blockers, toggleTask, addTask, resolv
               </div>
             ))}
           </div>
-        </div>
+        ) : (
+          <div className="blockers-empty">No open blockers.</div>
+        )}
+      </div>
+
+      {showNewBlocker && (
+        <NewBlockerModal
+          goalId={goal.id}
+          tasks={goal.tasks}
+          onClose={() => setShowNewBlocker(false)}
+          onCreate={addBlocker}
+        />
       )}
     </div>
   )
