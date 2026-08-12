@@ -4,9 +4,25 @@ from pydantic import BaseModel
 from typing import Optional
 
 from database import init_db, seed_goals, get_db
-from agent import get_focus_suggestion
+# from agent import get_focus_suggestion
+
+from contextlib import asynccontextmanager
+
+# @asynccontextmanager
+# async def startup():
+#     init_db()
+#     seed_goals()
+#     yield
+
+
+# app = FastAPI(lifespan=startup)
 
 app = FastAPI()
+
+@app.on_event("startup")
+def startup():
+    init_db()
+    seed_goals()
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,11 +32,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.on_event("startup")
-def startup():
-    init_db()
-    seed_goals()
 
 
 # ── Goals ──────────────────────────────────────────────────────────────────────
@@ -158,7 +169,39 @@ def update_blocker(blocker_id: int, update: BlockerUpdate):
 
 # ── Focus ──────────────────────────────────────────────────────────────────────
 
-@app.get("/focus")
-def focus():
-    suggestion = get_focus_suggestion()
-    return {"suggestion": suggestion}
+# @app.get("/focus")
+# def focus():
+#     suggestion = get_focus_suggestion()
+#     return {"suggestion": suggestion}
+
+
+# ── Sessions ───────────────────────────────────────────────────────────────────
+
+@app.get("/sessions")
+def list_sessions():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM session_logs ORDER BY created_at DESC, id DESC")
+    sessions = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return sessions
+
+
+class SessionCreate(BaseModel):
+    content: str
+
+
+@app.post("/sessions")
+def create_session(session: SessionCreate):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO session_logs (content) VALUES (?)",
+        (session.content,),
+    )
+    conn.commit()
+    session_id = cursor.lastrowid
+    cursor.execute("SELECT * FROM session_logs WHERE id = ?", (session_id,))
+    new_session = dict(cursor.fetchone())
+    conn.close()
+    return new_session

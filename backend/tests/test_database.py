@@ -18,7 +18,7 @@ def test_init_db_creates_all_tables(db):
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
     tables = {row[0] for row in cursor.fetchall()}
     conn.close()
-    assert tables == {"goals", "tasks", "blockers", "messages"}
+    assert tables == {"goals", "tasks", "blockers", "session_logs", "sqlite_sequence"}
 
 
 def test_seed_goals_inserts_three(db):

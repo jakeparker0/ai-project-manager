@@ -15,9 +15,7 @@ def client(tmp_path):
     with patch.object(database, "DB_PATH", db_path):
         database.init_db()
         database.seed_goals()
-        with patch("main.chat", return_value="Got it, logged."), \
-             patch("main.get_focus_suggestion", return_value="Ship the MVP."):
-            yield TestClient(main.app)
+        yield TestClient(main.app)
 
 
 # ── Goals ──────────────────────────────────────────────────────────────────────
@@ -83,32 +81,26 @@ def test_resolve_nonexistent_blocker_returns_404(client):
     assert resp.status_code == 404
 
 
-# ── Chat ───────────────────────────────────────────────────────────────────────
+# ── Sessions ───────────────────────────────────────────────────────────────────
 
-def test_chat_returns_mocked_reply(client):
-    resp = client.post("/chat", json={"message": "Just finished my CV"})
-    assert resp.status_code == 200
-    assert resp.json()["reply"] == "Got it, logged."
-
-
-def test_chat_history_starts_empty(client):
-    resp = client.get("/chat/history")
+def test_sessions_list_is_empty_initially(client):
+    resp = client.get("/sessions")
     assert resp.status_code == 200
     assert resp.json() == []
 
 
-def test_chat_history_persists_both_sides(client):
-    client.post("/chat", json={"message": "Sent a job application today"})
-    messages = client.get("/chat/history").json()
-    roles = [m["role"] for m in messages]
-    assert "user" in roles
-    assert "assistant" in roles
-    assert any(m["content"] == "Sent a job application today" for m in messages)
-
-
-# ── Focus ──────────────────────────────────────────────────────────────────────
-
-def test_focus_returns_suggestion(client):
-    resp = client.get("/focus")
+def test_create_session_appears_in_list(client):
+    resp = client.post("/sessions", json={"content": "Sent a job application today"})
     assert resp.status_code == 200
-    assert resp.json()["suggestion"] == "Ship the MVP."
+    assert resp.json()["content"] == "Sent a job application today"
+
+    sessions = client.get("/sessions").json()
+    assert any(s["content"] == "Sent a job application today" for s in sessions)
+
+
+def test_sessions_list_newest_first(client):
+    client.post("/sessions", json={"content": "first update"})
+    client.post("/sessions", json={"content": "second update"})
+    sessions = client.get("/sessions").json()
+    assert sessions[0]["content"] == "second update"
+    assert sessions[1]["content"] == "first update"
