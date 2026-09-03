@@ -81,6 +81,44 @@ def create_goal(goal: GoalCreate):
     return new_goal
 
 
+class GoalUpdate(BaseModel):
+    status: str
+
+
+@app.patch("/goals/{goal_id}")
+def update_goal(goal_id: int, update: GoalUpdate):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE goals SET status = ? WHERE id = ?",
+        (update.status, goal_id),
+    )
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Goal not found")
+    conn.commit()
+    cursor.execute("SELECT * FROM goals WHERE id = ?", (goal_id,))
+    updated_goal = dict(cursor.fetchone())
+    conn.close()
+    return updated_goal
+
+
+@app.delete("/goals/{goal_id}")
+def delete_goal(goal_id: int):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM goals WHERE id = ?", (goal_id,))
+    if cursor.fetchone() is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Goal not found")
+    cursor.execute("DELETE FROM blockers WHERE goal_id = ?", (goal_id,))
+    cursor.execute("DELETE FROM tasks WHERE goal_id = ?", (goal_id,))
+    cursor.execute("DELETE FROM goals WHERE id = ?", (goal_id,))
+    conn.commit()
+    conn.close()
+    return {"id": goal_id, "deleted": True}
+
+
 # ── Tasks ──────────────────────────────────────────────────────────────────────
 
 @app.get("/tasks")
@@ -138,6 +176,22 @@ def update_task(task_id: int, update: TaskUpdate):
     return {"id": task_id, "status": update.status}
 
 
+@app.delete("/tasks/{task_id}")
+def delete_task(task_id: int):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM tasks WHERE id = ?", (task_id,))
+    if cursor.fetchone() is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Task not found")
+    # Keep blockers that referenced this task, but detach them from it
+    cursor.execute("UPDATE blockers SET task_id = NULL WHERE task_id = ?", (task_id,))
+    cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    conn.commit()
+    conn.close()
+    return {"id": task_id, "deleted": True}
+
+
 # ── Blockers ───────────────────────────────────────────────────────────────────
 
 @app.get("/blockers")
@@ -192,6 +246,20 @@ def update_blocker(blocker_id: int, update: BlockerUpdate):
     conn.commit()
     conn.close()
     return {"id": blocker_id, "status": update.status}
+
+@app.delete("/blockers/{blocker_id}")
+def delete_blocker(blocker_id: int):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM blockers WHERE id = ?", (blocker_id,))
+    if cursor.fetchone() is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Blocker not found")
+    cursor.execute("DELETE FROM blockers WHERE id = ?", (blocker_id,))
+    conn.commit()
+    conn.close()
+    return {"id": blocker_id, "deleted": True}
+
 
 # ── Focus ──────────────────────────────────────────────────────────────────────
 

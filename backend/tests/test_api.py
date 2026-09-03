@@ -42,6 +42,41 @@ def test_create_goal(client):
     assert "Learn Rust" in titles
 
 
+def test_complete_and_restore_goal(client):
+    goal_id = client.get("/goals").json()[0]["id"]
+
+    resp = client.patch(f"/goals/{goal_id}", json={"status": "completed"})
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "completed"
+
+    resp = client.patch(f"/goals/{goal_id}", json={"status": "active"})
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "active"
+
+
+def test_update_nonexistent_goal_returns_404(client):
+    resp = client.patch("/goals/99999", json={"status": "completed"})
+    assert resp.status_code == 404
+
+
+def test_delete_goal_removes_tasks_and_blockers(client):
+    goal_id = client.get("/goals").json()[0]["id"]
+    task = client.post("/tasks", json={"goal_id": goal_id, "title": "Doomed task"}).json()
+    client.post("/blockers", json={"goal_id": goal_id, "description": "Doomed blocker"})
+
+    resp = client.delete(f"/goals/{goal_id}")
+    assert resp.status_code == 200
+
+    assert goal_id not in [g["id"] for g in client.get("/goals").json()]
+    assert client.get(f"/tasks?goal_id={goal_id}").json() == []
+    assert client.get("/blockers").json() == []
+
+
+def test_delete_nonexistent_goal_returns_404(client):
+    resp = client.delete("/goals/99999")
+    assert resp.status_code == 404
+
+
 # ── Tasks ──────────────────────────────────────────────────────────────────────
 
 def test_create_task_and_list_by_goal(client):
@@ -65,6 +100,27 @@ def test_update_task_status(client):
 
 def test_update_nonexistent_task_returns_404(client):
     resp = client.patch("/tasks/99999", json={"status": "done"})
+    assert resp.status_code == 404
+
+
+def test_delete_task_detaches_blockers(client):
+    goal_id = client.get("/goals").json()[0]["id"]
+    task = client.post("/tasks", json={"goal_id": goal_id, "title": "Doomed"}).json()
+    blocker = client.post(
+        "/blockers", json={"goal_id": goal_id, "description": "Blocked", "task_id": task["id"]}
+    ).json()
+
+    resp = client.delete(f"/tasks/{task['id']}")
+    assert resp.status_code == 200
+
+    assert task["id"] not in [t["id"] for t in client.get(f"/tasks?goal_id={goal_id}").json()]
+    remaining = [b for b in client.get("/blockers").json() if b["id"] == blocker["id"]]
+    assert len(remaining) == 1
+    assert remaining[0]["task_id"] is None
+
+
+def test_delete_nonexistent_task_returns_404(client):
+    resp = client.delete("/tasks/99999")
     assert resp.status_code == 404
 
 
@@ -99,6 +155,20 @@ def test_create_blocker_with_task_id(client):
 
 def test_resolve_nonexistent_blocker_returns_404(client):
     resp = client.patch("/blockers/99999", json={"status": "resolved"})
+    assert resp.status_code == 404
+
+
+def test_delete_blocker(client):
+    goal_id = client.get("/goals").json()[0]["id"]
+    blocker = client.post("/blockers", json={"goal_id": goal_id, "description": "Doomed"}).json()
+
+    resp = client.delete(f"/blockers/{blocker['id']}")
+    assert resp.status_code == 200
+    assert client.get("/blockers").json() == []
+
+
+def test_delete_nonexistent_blocker_returns_404(client):
+    resp = client.delete("/blockers/99999")
     assert resp.status_code == 404
 
 
