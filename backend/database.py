@@ -110,7 +110,7 @@ def get_current_context() -> dict:
     conn.close()
     return {
         "active_goals": active_goals,
-        "recent_session_logs": [f"{log['content']} ({(datetime.now() - log['created_at']).days} days ago)" for log in recent_session_logs],
+        "recent_session_logs": [f"{log['content']} ({(datetime.now() - datetime.strptime(log['created_at'], '%Y-%m-%d %H:%M:%S')).days} days ago)" for log in recent_session_logs],
     }
 
 
