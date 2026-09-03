@@ -1,9 +1,20 @@
 import { useState } from 'react'
 import NewBlockerModal from './NewBlockerModal'
 import ConfirmModal from './ConfirmModal'
+import {
+  AddIcon, CheckIcon, DeleteIcon, RestoreIcon, ErrorOutlineIcon, FlagIcon,
+  CheckCircleIcon, CircleOutlineIcon, TimelapseIcon,
+} from './Icons'
 
 const TASK_NEXT = { todo: 'in_progress', in_progress: 'done', done: 'todo' }
-const TASK_LABEL = { todo: 'To do', in_progress: 'In progress', done: 'Done' }
+const TASK_LABEL = { todo: 'to do', in_progress: 'in progress', done: 'done' }
+const STATUS_LABEL = { active: 'Active', completed: 'Completed', paused: 'Paused' }
+
+function TaskStatusIcon({ status }) {
+  if (status === 'done') return <CheckCircleIcon size={22} />
+  if (status === 'in_progress') return <TimelapseIcon size={22} />
+  return <CircleOutlineIcon size={22} />
+}
 
 export default function GoalDetail({
   goal, blockers, toggleTask, addTask, resolveBlocker, addBlocker,
@@ -15,140 +26,179 @@ export default function GoalDetail({
 
   if (!goal) {
     return (
-      <div className="goal-detail goal-detail-empty">
-        <span>Select a goal to see details</span>
+      <div className="detail-empty">
+        <FlagIcon size={40} />
+        <span>Select a goal to see its details</span>
       </div>
     )
   }
 
   const isArchived = goal.status === 'completed'
+  const doneCount = goal.tasks.filter(t => t.status === 'done').length
+  const pct = goal.tasks.length > 0 ? Math.round((doneCount / goal.tasks.length) * 100) : 0
 
-  function handleAddKeyDown(e) {
+  async function handleAddKeyDown(e) {
     if (e.key === 'Enter' && newTask.trim()) {
-      addTask(goal.id, newTask.trim())
-      setNewTask('')
+      const task = await addTask(goal.id, newTask.trim())
+      if (task) setNewTask('')
     }
   }
 
   return (
     <div className="goal-detail">
-      <div className="goal-detail-header">
-        <h2 className="panel-title">{goal.title}</h2>
-        <div className="goal-detail-actions">
+      <div className="detail-header">
+        <div className="detail-heading">
+          <h2 className="detail-title">{goal.title}</h2>
+          <span className={`chip chip-${goal.status}`}>
+            {STATUS_LABEL[goal.status] || goal.status}
+          </span>
+        </div>
+        <div className="detail-actions">
           {isArchived ? (
-            <button
-              className="btn-add"
-              onClick={() => setGoalStatus(goal.id, 'active')}
-            >
-              ↩ Restore
+            <button className="btn btn-outlined" onClick={() => setGoalStatus(goal.id, 'active')}>
+              <RestoreIcon size={16} /> Restore
             </button>
           ) : (
             <button
-              className="btn-add btn-complete"
+              className="btn btn-outlined btn-success"
               onClick={() => setGoalStatus(goal.id, 'completed')}
             >
-              ✓ Complete
+              <CheckIcon size={16} /> Complete
             </button>
           )}
           <button
-            className="btn-add btn-delete"
+            className="btn btn-text btn-error"
             onClick={() => setConfirm({
               type: 'goal',
               id: goal.id,
-              title: 'Delete goal',
-              message: `Delete "${goal.title}"? Its tasks and blockers will also be deleted. This cannot be undone.`,
+              title: 'Delete goal?',
+              message: `“${goal.title}” and all of its tasks and blockers will be permanently deleted. This cannot be undone.`,
             })}
           >
-            Delete
+            <DeleteIcon size={16} /> Delete
           </button>
         </div>
       </div>
 
+      {goal.horizon && <div className="detail-horizon">Horizon · {goal.horizon}</div>}
+
       {isArchived && (
         <div className="archived-banner">
+          <RestoreIcon size={16} />
           This goal is archived and read-only. Restore it to make changes.
         </div>
       )}
 
       {goal.description && (
-        <p className="goal-description">{goal.description}</p>
+        <p className="detail-description">{goal.description}</p>
       )}
 
-      <div className="task-list">
-        {goal.tasks.map(task => (
-          <div
-            key={task.id}
-            className={`task-item task-${task.status}${isArchived ? ' task-item-readonly' : ''}`}
-            onClick={isArchived ? undefined : () => toggleTask(goal.id, task.id, task.status)}
-            title={isArchived ? undefined : `Click to advance: ${TASK_LABEL[task.status]}`}
-          >
-            <span className="task-check">
-              {task.status === 'done' ? '✓' : task.status === 'in_progress' ? '◐' : '○'}
-            </span>
-            <span className="task-title">{task.title}</span>
-            <span className={`task-badge task-badge-${task.status}`}>
-              {TASK_LABEL[task.status]}
-            </span>
-            {!isArchived && (
-              <button
-                className="btn-delete-item"
-                aria-label="Delete task"
-                title="Delete task"
-                onClick={e => {
-                  e.stopPropagation()
-                  setConfirm({
-                    type: 'task',
-                    id: task.id,
-                    title: 'Delete task',
-                    message: `Delete task "${task.title}"? This cannot be undone.`,
-                  })
-                }}
-              >
-                ×
-              </button>
+      <div className="detail-section">
+        <div className="section-header">
+          <div className="section-title-group">
+            <h3 className="overline">Tasks</h3>
+            {goal.tasks.length > 0 && (
+              <span className="section-count">{doneCount} of {goal.tasks.length} done</span>
             )}
           </div>
-        ))}
-        {!isArchived && (
-          <input
-            className="task-add-input"
-            placeholder="Add task…"
-            value={newTask}
-            onChange={e => setNewTask(e.target.value)}
-            onKeyDown={handleAddKeyDown}
-          />
+        </div>
+
+        {goal.tasks.length > 0 && (
+          <div className="task-progress">
+            <div className="progress-track" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+              <div className="progress-bar" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
         )}
+
+        <div className="task-list">
+          {goal.tasks.map(task => (
+            <div key={task.id} className={`task-item${task.status === 'done' ? ' task-item-done' : ''}`}>
+              <button
+                className={`icon-btn task-status-btn task-${task.status}`}
+                disabled={isArchived}
+                title={isArchived ? undefined : `Mark as ${TASK_LABEL[TASK_NEXT[task.status]]}`}
+                aria-label={`${task.title} — ${TASK_LABEL[task.status]}. Mark as ${TASK_LABEL[TASK_NEXT[task.status]]}`}
+                onClick={() => toggleTask(goal.id, task.id, task.status)}
+              >
+                <TaskStatusIcon status={task.status} />
+              </button>
+              <span className="task-title">{task.title}</span>
+              {task.status === 'in_progress' && (
+                <span className="chip chip-progress">In progress</span>
+              )}
+              {!isArchived && (
+                <button
+                  className="icon-btn icon-btn-error"
+                  aria-label="Delete task"
+                  title="Delete task"
+                  onClick={() => setConfirm({
+                    type: 'task',
+                    id: task.id,
+                    title: 'Delete task?',
+                    message: `The task “${task.title}” will be permanently deleted.`,
+                  })}
+                >
+                  <DeleteIcon size={18} />
+                </button>
+              )}
+            </div>
+          ))}
+
+          {goal.tasks.length === 0 && isArchived && (
+            <div className="empty-note">No tasks.</div>
+          )}
+
+          {!isArchived && (
+            <div className="task-add">
+              <AddIcon size={20} />
+              <input
+                className="task-add-input"
+                placeholder="Add a task — press Enter"
+                value={newTask}
+                onChange={e => setNewTask(e.target.value)}
+                onKeyDown={handleAddKeyDown}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="blockers-section">
-        <div className="panel-header">
-          <h3 className="panel-title">Blockers</h3>
+      <div className="detail-section">
+        <div className="section-header">
+          <div className="section-title-group">
+            <h3 className="overline">Blockers</h3>
+            {blockers.length > 0 && <span className="section-count">{blockers.length} open</span>}
+          </div>
           {!isArchived && (
-            <button className="btn-add" onClick={() => setShowNewBlocker(true)}>+ New Blocker</button>
+            <button className="btn btn-text btn-error" onClick={() => setShowNewBlocker(true)}>
+              <AddIcon size={16} /> Add blocker
+            </button>
           )}
         </div>
         {blockers.length > 0 ? (
           <div className="blockers-list">
             {blockers.map(b => (
               <div key={b.id} className="blocker-item">
+                <ErrorOutlineIcon size={20} className="blocker-icon" />
                 <span className="blocker-desc">{b.description}</span>
                 {!isArchived && (
                   <div className="blocker-actions">
-                    <button className="btn-resolve" onClick={() => resolveBlocker(b.id)}>
+                    <button className="btn btn-text btn-success" onClick={() => resolveBlocker(b.id)}>
                       Resolve
                     </button>
                     <button
-                      className="btn-delete-item"
+                      className="icon-btn icon-btn-error"
                       aria-label="Delete blocker"
                       title="Delete blocker"
                       onClick={() => setConfirm({
                         type: 'blocker',
                         id: b.id,
-                        title: 'Delete blocker',
-                        message: `Delete blocker "${b.description}"? This cannot be undone.`,
+                        title: 'Delete blocker?',
+                        message: `The blocker “${b.description}” will be permanently deleted.`,
                       })}
                     >
-                      ×
+                      <DeleteIcon size={18} />
                     </button>
                   </div>
                 )}
@@ -156,7 +206,7 @@ export default function GoalDetail({
             ))}
           </div>
         ) : (
-          <div className="blockers-empty">No open blockers.</div>
+          <div className="empty-note">No open blockers.</div>
         )}
       </div>
 

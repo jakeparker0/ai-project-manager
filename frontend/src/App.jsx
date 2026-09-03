@@ -3,15 +3,28 @@ import Dashboard from './Dashboard'
 import SessionLog from './SessionLog'
 import GoalDetail from './GoalDetail'
 import useGoalsData from './useGoalsData'
+import { FlagIcon, ErrorOutlineIcon } from './Icons'
+
+const POLL_INTERVAL_MS = 30000
 
 export default function App() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedGoalId, setSelectedGoalId] = useState(null)
+  const [toast, setToast] = useState(null)
+
+  const showError = useCallback((message) => setToast(message), [])
+
+  useEffect(() => {
+    if (!toast) return
+    const id = setTimeout(() => setToast(null), 4000)
+    return () => clearTimeout(id)
+  }, [toast])
 
   const {
-    goals, blockers, loading, toggleTask, addTask, resolveBlocker, addGoal, addBlocker,
+    goals, blockers, loading, loadError,
+    toggleTask, addTask, resolveBlocker, addGoal, addBlocker,
     setGoalStatus, removeGoal, removeTask, removeBlocker,
-  } = useGoalsData(refreshKey)
+  } = useGoalsData(refreshKey, showError)
 
   useEffect(() => {
     if (goals.length > 0 && selectedGoalId === null) {
@@ -21,9 +34,23 @@ export default function App() {
 
   const refresh = useCallback(() => setRefreshKey(k => k + 1), [])
 
+  // Writes can also come from Claude Desktop via the MCP server, so keep the
+  // view live by refetching on an interval.
+  useEffect(() => {
+    const id = setInterval(refresh, POLL_INTERVAL_MS)
+    return () => clearInterval(id)
+  }, [refresh])
+
+  const handleAddGoal = useCallback(async (data) => {
+    const goal = await addGoal(data)
+    if (goal) setSelectedGoalId(goal.id)
+    return goal
+  }, [addGoal])
+
   const handleRemoveGoal = useCallback(async (goalId) => {
-    await removeGoal(goalId)
-    setSelectedGoalId(prev => (prev === goalId ? null : prev))
+    const ok = await removeGoal(goalId)
+    if (ok) setSelectedGoalId(prev => (prev === goalId ? null : prev))
+    return ok
   }, [removeGoal])
 
   const selectedGoal = goals.find(g => g.id === selectedGoalId) || null
@@ -31,19 +58,25 @@ export default function App() {
 
   return (
     <div className="app">
-      <div className="panels">
-        <div className="panel panel-left">
+      <header className="appbar">
+        <FlagIcon className="appbar-icon" size={22} />
+        <h1 className="appbar-title">PM Agent</h1>
+      </header>
+
+      <div className="layout">
+        <aside className="col col-goals">
           <Dashboard
             goals={goals}
             blockers={blockers}
             loading={loading}
+            loadError={loadError}
             selectedGoalId={selectedGoalId}
             onSelect={setSelectedGoalId}
-            addGoal={addGoal}
+            addGoal={handleAddGoal}
           />
-        </div>
-        <div className="panel panel-right">
-          <SessionLog onUpdate={refresh} />
+        </aside>
+
+        <main className="col col-detail">
           <GoalDetail
             goal={selectedGoal}
             blockers={selectedBlockers}
@@ -56,8 +89,19 @@ export default function App() {
             removeTask={removeTask}
             removeBlocker={removeBlocker}
           />
-        </div>
+        </main>
+
+        <aside className="col col-sessions">
+          <SessionLog refreshKey={refreshKey} onError={showError} />
+        </aside>
       </div>
+
+      {toast && (
+        <div className="snackbar" role="alert">
+          <ErrorOutlineIcon className="snackbar-icon" />
+          {toast}
+        </div>
+      )}
     </div>
   )
 }

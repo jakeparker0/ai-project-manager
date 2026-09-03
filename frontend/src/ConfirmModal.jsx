@@ -10,8 +10,8 @@ export default function ConfirmModal({ title, message, confirmLabel = 'Delete', 
     <Modal title={title} onClose={onClose}>
       <p className="confirm-message">{message}</p>
       <div className="modal-actions">
-        <button className="btn-secondary" onClick={onClose}>Cancel</button>
-        <button className="btn-danger" onClick={handleConfirm}>{confirmLabel}</button>
+        <button className="btn btn-text" onClick={onClose} autoFocus>Cancel</button>
+        <button className="btn btn-text btn-error" onClick={handleConfirm}>{confirmLabel}</button>
       </div>
     </Modal>
   )

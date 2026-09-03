@@ -12,19 +12,19 @@ export default function NewGoalModal({ onClose, onCreate }) {
     if (!title.trim() || saving) return
     setSaving(true)
     try {
-      await onCreate({
+      const goal = await onCreate({
         title: title.trim(),
         description: description.trim() || null,
         horizon: horizon.trim() || null,
       })
-      onClose()
+      if (goal) onClose()
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Modal title="New Goal" onClose={onClose}>
+    <Modal title="New goal" onClose={onClose}>
       <form className="modal-form" onSubmit={handleSubmit}>
         <label className="modal-label">
           Title
@@ -55,9 +55,9 @@ export default function NewGoalModal({ onClose, onCreate }) {
           />
         </label>
         <div className="modal-actions">
-          <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn-primary" disabled={!title.trim() || saving}>
-            {saving ? 'Creating…' : 'Create Goal'}
+          <button type="button" className="btn btn-text" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-contained" disabled={!title.trim() || saving}>
+            {saving ? 'Creating…' : 'Create'}
           </button>
         </div>
       </form>

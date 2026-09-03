@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import NewGoalModal from './NewGoalModal'
+import { AddIcon, ErrorOutlineIcon, ExpandMoreIcon, ChevronRightIcon } from './Icons'
 
 const STATUS_LABEL = { active: 'Active', completed: 'Completed', paused: 'Paused' }
 
@@ -7,85 +8,109 @@ function GoalCard({ goal, blockers, isSelected, onSelect }) {
   const total = goal.tasks.length
   const done = goal.tasks.filter(t => t.status === 'done').length
   const openBlockers = blockers.filter(b => b.goal_id === goal.id && b.status !== 'resolved').length
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0
+
   return (
-    <div
-      className={`goal-card goal-card-selectable${isSelected ? ' goal-card-selected' : ''}${goal.status === 'completed' ? ' goal-card-archived' : ''}`}
+    <button
+      type="button"
+      className={
+        'goal-card' +
+        (isSelected ? ' goal-card-selected' : '') +
+        (goal.status === 'completed' ? ' goal-card-archived' : '')
+      }
       onClick={() => onSelect(goal.id)}
+      aria-pressed={isSelected}
     >
-      <div className="goal-header">
+      <div className="goal-card-top">
         <div>
-          <h3 className="goal-title">{goal.title}</h3>
-          <span className="goal-horizon">{goal.horizon}</span>
+          <span className="goal-card-title">{goal.title}</span>
+          {goal.horizon && <span className="goal-card-horizon">{goal.horizon}</span>}
         </div>
-        <span className={`badge badge-${goal.status}`}>
-          {STATUS_LABEL[goal.status] || goal.status}
-        </span>
-      </div>
-      <div className="goal-summary">
-        {done}/{total} tasks done
-        {openBlockers > 0 && (
-          <span className="goal-summary-blockers">
-            {openBlockers} blocker{openBlockers > 1 ? 's' : ''}
+        {goal.status !== 'active' && (
+          <span className={`chip chip-${goal.status}`}>
+            {STATUS_LABEL[goal.status] || goal.status}
           </span>
         )}
       </div>
-    </div>
+      <div className="goal-card-progress">
+        <div className="progress-track" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+          <div className="progress-bar" style={{ width: `${pct}%` }} />
+        </div>
+        <span className="goal-card-count">{done}/{total}</span>
+      </div>
+      {openBlockers > 0 && (
+        <div className="goal-card-blockers">
+          <ErrorOutlineIcon size={15} />
+          {openBlockers} blocker{openBlockers > 1 ? 's' : ''}
+        </div>
+      )}
+    </button>
   )
 }
 
-export default function Dashboard({ goals, blockers, loading, selectedGoalId, onSelect, addGoal }) {
+export default function Dashboard({ goals, blockers, loading, loadError, selectedGoalId, onSelect, addGoal }) {
   const [showNewGoal, setShowNewGoal] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
-
-  if (loading) return <div className="loading">Loading...</div>
 
   const activeGoals = goals.filter(g => g.status !== 'completed')
   const archivedGoals = goals.filter(g => g.status === 'completed')
 
   return (
     <div className="dashboard">
-      <div className="panel-header">
-        <h2 className="panel-title">Goals</h2>
-        <button className="btn-add" onClick={() => setShowNewGoal(true)}>+ New Goal</button>
-      </div>
-      <div className="goals-list">
-        {activeGoals.map(goal => (
-          <GoalCard
-            key={goal.id}
-            goal={goal}
-            blockers={blockers}
-            isSelected={goal.id === selectedGoalId}
-            onSelect={onSelect}
-          />
-        ))}
-        {activeGoals.length === 0 && (
-          <div className="goals-empty">No active goals.</div>
-        )}
+      <div className="section-header">
+        <h2 className="overline">Goals</h2>
+        <button className="btn btn-contained" onClick={() => setShowNewGoal(true)}>
+          <AddIcon size={16} /> New goal
+        </button>
       </div>
 
-      {archivedGoals.length > 0 && (
-        <div className="archived-section">
-          <button
-            className="archived-toggle"
-            onClick={() => setShowArchived(v => !v)}
-          >
-            <span className="archived-toggle-arrow">{showArchived ? '▾' : '▸'}</span>
-            Archived ({archivedGoals.length})
-          </button>
-          {showArchived && (
-            <div className="goals-list">
-              {archivedGoals.map(goal => (
-                <GoalCard
-                  key={goal.id}
-                  goal={goal}
-                  blockers={blockers}
-                  isSelected={goal.id === selectedGoalId}
-                  onSelect={onSelect}
-                />
-              ))}
+      {loading ? (
+        <div className="loading">Loading…</div>
+      ) : loadError && goals.length === 0 ? (
+        <div className="empty-note">Can’t reach the backend. Is the API server running?</div>
+      ) : (
+        <>
+          <div className="goals-list">
+            {activeGoals.map(goal => (
+              <GoalCard
+                key={goal.id}
+                goal={goal}
+                blockers={blockers}
+                isSelected={goal.id === selectedGoalId}
+                onSelect={onSelect}
+              />
+            ))}
+            {activeGoals.length === 0 && (
+              <div className="empty-note">No active goals yet. Create one to get started.</div>
+            )}
+          </div>
+
+          {archivedGoals.length > 0 && (
+            <div className="archived-section">
+              <button
+                className="archived-toggle"
+                onClick={() => setShowArchived(v => !v)}
+                aria-expanded={showArchived}
+              >
+                {showArchived ? <ExpandMoreIcon size={18} /> : <ChevronRightIcon size={18} />}
+                Archived ({archivedGoals.length})
+              </button>
+              {showArchived && (
+                <div className="goals-list">
+                  {archivedGoals.map(goal => (
+                    <GoalCard
+                      key={goal.id}
+                      goal={goal}
+                      blockers={blockers}
+                      isSelected={goal.id === selectedGoalId}
+                      onSelect={onSelect}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </div>
+        </>
       )}
 
       {showNewGoal && (

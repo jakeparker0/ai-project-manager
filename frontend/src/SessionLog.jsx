@@ -12,7 +12,7 @@ function formatDate(ts) {
   })
 }
 
-export default function SessionLog({ onUpdate }) {
+export default function SessionLog({ refreshKey, onError }) {
   const [entries, setEntries] = useState([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -21,17 +21,18 @@ export default function SessionLog({ onUpdate }) {
     getSessions()
       .then(setEntries)
       .catch(() => {})
-  }, [])
+  }, [refreshKey])
 
   async function submit() {
     const text = input.trim()
     if (!text || sending) return
-    setInput('')
     setSending(true)
     try {
       const entry = await createSession(text)
       setEntries(prev => [entry, ...prev])
-      onUpdate()
+      setInput('')
+    } catch {
+      onError('Could not log the session note')
     } finally {
       setSending(false)
     }
@@ -45,12 +46,17 @@ export default function SessionLog({ onUpdate }) {
   }
 
   return (
-    <div className="session-log">
-      <h2 className="panel-title">Session Log</h2>
+    <>
+      <div className="section-header">
+        <h2 className="overline">Session Log</h2>
+      </div>
 
       <div className="session-entries">
         {entries.length === 0 && (
-          <div className="session-empty">Log a session update to get started.</div>
+          <div className="session-empty">
+            No session notes yet.<br />
+            Notes logged here or from Claude Desktop keep context between sessions.
+          </div>
         )}
         {entries.map(entry => (
           <div key={entry.id} className="session-entry">
@@ -66,17 +72,17 @@ export default function SessionLog({ onUpdate }) {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Log a session update… (Enter to send)"
-          rows={1}
+          placeholder="Log a session note… (Enter to send)"
+          rows={2}
         />
         <button
-          className="session-send-btn"
+          className="btn btn-contained"
           onClick={submit}
           disabled={sending || !input.trim()}
         >
           Log
         </button>
       </div>
-    </div>
+    </>
   )
 }

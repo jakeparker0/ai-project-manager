@@ -11,19 +11,19 @@ export default function NewBlockerModal({ goalId, tasks, onClose, onCreate }) {
     if (!description.trim() || saving) return
     setSaving(true)
     try {
-      await onCreate({
+      const blocker = await onCreate({
         goal_id: goalId,
         description: description.trim(),
         task_id: taskId ? Number(taskId) : null,
       })
-      onClose()
+      if (blocker) onClose()
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Modal title="New Blocker" onClose={onClose}>
+    <Modal title="Log blocker" onClose={onClose}>
       <form className="modal-form" onSubmit={handleSubmit}>
         <label className="modal-label">
           Description
@@ -48,9 +48,9 @@ export default function NewBlockerModal({ goalId, tasks, onClose, onCreate }) {
           </label>
         )}
         <div className="modal-actions">
-          <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn-primary" disabled={!description.trim() || saving}>
-            {saving ? 'Logging…' : 'Log Blocker'}
+          <button type="button" className="btn btn-text" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-contained" disabled={!description.trim() || saving}>
+            {saving ? 'Logging…' : 'Log blocker'}
           </button>
         </div>
       </form>
