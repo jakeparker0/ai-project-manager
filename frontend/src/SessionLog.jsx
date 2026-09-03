@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react'
 import { getSessions, createSession } from './api'
 
+// Timestamps come from SQLite as UTC 'YYYY-MM-DD HH:MM:SS' strings
+function formatDate(ts) {
+  if (!ts) return ''
+  const d = new Date(ts.replace(' ', 'T') + 'Z')
+  if (isNaN(d)) return ts
+  return d.toLocaleString(undefined, {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: 'numeric', minute: '2-digit',
+  })
+}
+
 export default function SessionLog({ onUpdate }) {
   const [entries, setEntries] = useState([])
   const [input, setInput] = useState('')
@@ -43,6 +54,7 @@ export default function SessionLog({ onUpdate }) {
         )}
         {entries.map(entry => (
           <div key={entry.id} className="session-entry">
+            <div className="session-entry-date">{formatDate(entry.created_at)}</div>
             <div className="session-entry-text">{entry.content}</div>
           </div>
         ))}

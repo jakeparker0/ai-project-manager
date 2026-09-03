@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getGoals, getBlockers, updateTask, updateBlocker, createTask, createGoal, createBlocker } from './api'
+import { getGoals, getBlockers, updateTask, updateBlocker, createTask, createGoal, createBlocker, updateGoal, deleteGoal, deleteTask, deleteBlocker } from './api'
 
 const TASK_NEXT = { todo: 'in_progress', in_progress: 'done', done: 'todo' }
 
@@ -57,5 +57,35 @@ export default function useGoalsData(refreshKey) {
     return blocker
   }, [])
 
-  return { goals, blockers, loading, toggleTask, addTask, resolveBlocker, addGoal, addBlocker }
+  const setGoalStatus = useCallback(async (goalId, status) => {
+    await updateGoal(goalId, status)
+    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, status } : g))
+  }, [])
+
+  const removeGoal = useCallback(async (goalId) => {
+    await deleteGoal(goalId)
+    setGoals(prev => prev.filter(g => g.id !== goalId))
+    setBlockers(prev => prev.filter(b => b.goal_id !== goalId))
+  }, [])
+
+  const removeTask = useCallback(async (goalId, taskId) => {
+    await deleteTask(taskId)
+    setGoals(prev =>
+      prev.map(g =>
+        g.id === goalId ? { ...g, tasks: g.tasks.filter(t => t.id !== taskId) } : g
+      )
+    )
+    setBlockers(prev => prev.map(b => b.task_id === taskId ? { ...b, task_id: null } : b))
+  }, [])
+
+  const removeBlocker = useCallback(async (blockerId) => {
+    await deleteBlocker(blockerId)
+    setBlockers(prev => prev.filter(b => b.id !== blockerId))
+  }, [])
+
+  return {
+    goals, blockers, loading,
+    toggleTask, addTask, resolveBlocker, addGoal, addBlocker,
+    setGoalStatus, removeGoal, removeTask, removeBlocker,
+  }
 }

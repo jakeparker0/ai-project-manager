@@ -8,7 +8,10 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedGoalId, setSelectedGoalId] = useState(null)
 
-  const { goals, blockers, loading, toggleTask, addTask, resolveBlocker, addGoal, addBlocker } = useGoalsData(refreshKey)
+  const {
+    goals, blockers, loading, toggleTask, addTask, resolveBlocker, addGoal, addBlocker,
+    setGoalStatus, removeGoal, removeTask, removeBlocker,
+  } = useGoalsData(refreshKey)
 
   useEffect(() => {
     if (goals.length > 0 && selectedGoalId === null) {
@@ -17,6 +20,11 @@ export default function App() {
   }, [goals, selectedGoalId])
 
   const refresh = useCallback(() => setRefreshKey(k => k + 1), [])
+
+  const handleRemoveGoal = useCallback(async (goalId) => {
+    await removeGoal(goalId)
+    setSelectedGoalId(prev => (prev === goalId ? null : prev))
+  }, [removeGoal])
 
   const selectedGoal = goals.find(g => g.id === selectedGoalId) || null
   const selectedBlockers = blockers.filter(b => b.goal_id === selectedGoalId)
@@ -43,6 +51,10 @@ export default function App() {
             addTask={addTask}
             resolveBlocker={resolveBlocker}
             addBlocker={addBlocker}
+            setGoalStatus={setGoalStatus}
+            removeGoal={handleRemoveGoal}
+            removeTask={removeTask}
+            removeBlocker={removeBlocker}
           />
         </div>
       </div>

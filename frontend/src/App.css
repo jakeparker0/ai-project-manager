@@ -548,6 +548,139 @@ html, body, #root {
 
 .btn-secondary:hover { border-color: var(--text-secondary); color: var(--text-primary); }
 
+/* ── Archived goals ─────────────────────────────────────────────────────────── */
+.archived-section {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.archived-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 12px;
+  transition: color 0.15s;
+}
+
+.archived-toggle:hover { color: var(--text-primary); }
+
+.archived-toggle-arrow { font-size: 10px; }
+
+.goal-card-archived { opacity: 0.65; }
+.goal-card-archived.goal-card-selected { opacity: 1; }
+
+.archived-banner {
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 8px 12px;
+  margin-bottom: 14px;
+}
+
+.goals-empty {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+/* ── Goal detail actions ────────────────────────────────────────────────────── */
+.goal-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.goal-detail-header .panel-title { margin-bottom: 16px; }
+
+.goal-detail-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-complete { color: var(--success); }
+.btn-complete:hover {
+  border-color: var(--success);
+  background: #4caf8222;
+}
+
+.btn-delete { color: var(--danger); }
+.btn-delete:hover {
+  border-color: var(--danger);
+  background: #e8606022;
+}
+
+/* ── Item delete buttons ────────────────────────────────────────────────────── */
+.btn-delete-item {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  opacity: 0;
+  transition: color 0.15s, opacity 0.15s;
+}
+
+.task-item:hover .btn-delete-item,
+.blocker-item:hover .btn-delete-item { opacity: 1; }
+
+.btn-delete-item:hover { color: var(--danger); }
+
+.blocker-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.task-item-readonly { cursor: default; }
+.task-item-readonly:hover { border-color: transparent; background: var(--bg-secondary); }
+
+/* ── Confirm dialog ─────────────────────────────────────────────────────────── */
+.confirm-message {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  line-height: 1.55;
+}
+
+.btn-danger {
+  background: var(--danger);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-danger:hover { opacity: 0.85; }
+
+/* ── Session entry date ─────────────────────────────────────────────────────── */
+.session-entry-date {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
 /* ── Misc ───────────────────────────────────────────────────────────────────── */
 .loading {
   color: var(--text-secondary);
